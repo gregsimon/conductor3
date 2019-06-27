@@ -5,8 +5,8 @@
 #include "Adafruit_VL53L0X.h"
 
 // Rangefinders
-Adafruit_VL53L0X sensorA = Adafruit_VL53L0X();
-Adafruit_VL53L0X sensorB = Adafruit_VL53L0X();
+Adafruit_VL53L0X sensorA = Adafruit_VL53L0X(); // SDA1
+Adafruit_VL53L0X sensorB = Adafruit_VL53L0X(); // SDA0
 Adafruit_VL53L0X sensorC = Adafruit_VL53L0X();
 
 
@@ -15,12 +15,10 @@ const int channel = 1;
 
 // Wired to XSHUT of each rangefinder
 const int pin_sensorA = 32;
-const int pin_sensorB = 4;
-const int pin_sensorC = 5;
+const int pin_sensorB = 30;
 
 const uint8_t addr_sensorA = 0x29;
 const uint8_t addr_sensorB = 0x61;
-const uint8_t addr_sensorC = 0x62;
 
 
 // Since all rangefinders are on the I2C bus, we need to assign
@@ -40,14 +38,23 @@ void onSystemExclusiveChunk(const uint8_t *data, uint16_t length, bool last)
 void setup() {
   Serial.begin(9600);
 
-  pinMode(32, INPUT_PULLDOWN);    // Interrupt SensorA
+  pinMode(31, INPUT_PULLDOWN);    // Interrupt SensorA
   pinMode(pin_sensorA, OUTPUT);   // XSHUT SensorA
-
   digitalWrite(pin_sensorA, 1);
 
+  pinMode(29, INPUT_PULLDOWN);    // Interrupt SensorA
+  pinMode(pin_sensorB, OUTPUT);   // XSHUT SensorB
+  digitalWrite(pin_sensorB, 1);
+
+
   Serial.println(F("MIDI Conductor3"));
+
   if (!sensorA.begin(addr_sensorA, false, &Wire1)) {
     Serial.println(F("Failed to boot sensor A"));
+    while(1);
+  }  
+  if (!sensorB.begin(addr_sensorA, false, &Wire)) {
+    Serial.println(F("Failed to boot sensor B"));
     while(1);
   }  
 
@@ -57,17 +64,25 @@ void setup() {
 }
 
 void loop() {
-  VL53L0X_RangingMeasurementData_t measure;
+  VL53L0X_RangingMeasurementData_t measureA;
+  VL53L0X_RangingMeasurementData_t measureB;
 
-  Serial.print("Reading a measurement... ");
-  sensorA.rangingTest(&measure, false); // pass in 'true' to get debug data printout!
+  //Serial.print("Reading a measurement... ");
+  sensorA.rangingTest(&measureA, false); // pass in 'true' to get debug data printout!
+  sensorB.rangingTest(&measureB, false); // pass in 'true' to get debug data printout!
 
-  if (measure.RangeStatus != 4) {  // phase failures have incorrect data
-    Serial.print("Distance (mm): "); Serial.println(measure.RangeMilliMeter);
+  if (measureA.RangeStatus != 4) {  // phase failures have incorrect data
+    Serial.print("Distance (mm): [A] "); Serial.println(measureA.RangeMilliMeter);
   } else {
-    Serial.println(" out of range ");
+    Serial.println(" [A] out of range ");
   }
-    
+
+  if (measureB.RangeStatus != 4) {  // phase failures have incorrect data
+    Serial.print("Distance (mm): [B] "); Serial.println(measureB.RangeMilliMeter);
+  } else {
+    Serial.println(" [B] out of range ");
+  }
+
   delay(100);
 
   //usbMIDI.read();

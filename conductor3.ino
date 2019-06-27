@@ -16,9 +16,11 @@ const int channel = 1;
 // Wired to XSHUT of each rangefinder
 const int pin_sensorA = 32;
 const int pin_sensorB = 30;
+const int pin_sensorC = 28;
 
 const uint8_t addr_sensorA = 0x29;
-const uint8_t addr_sensorB = 0x61;
+const uint8_t addr_sensorB = 0x29;
+const uint8_t addr_sensorC = 0x29;
 
 
 // Since all rangefinders are on the I2C bus, we need to assign
@@ -46,6 +48,10 @@ void setup() {
   pinMode(pin_sensorB, OUTPUT);   // XSHUT SensorB
   digitalWrite(pin_sensorB, 1);
 
+  pinMode(27, INPUT_PULLDOWN);    // Interrupt SensorA
+  pinMode(pin_sensorC, OUTPUT);   // XSHUT SensorB
+  digitalWrite(pin_sensorC, 1);
+
 
   Serial.println(F("MIDI Conductor3"));
 
@@ -57,6 +63,10 @@ void setup() {
     Serial.println(F("Failed to boot sensor B"));
     while(1);
   }  
+  if (!sensorC.begin(addr_sensorC, false, &Wire2)) {
+    Serial.println(F("Failed to boot sensor C"));
+    while(1);
+  }  
 
 
   // USB MIDI seutp
@@ -66,10 +76,12 @@ void setup() {
 void loop() {
   VL53L0X_RangingMeasurementData_t measureA;
   VL53L0X_RangingMeasurementData_t measureB;
+  VL53L0X_RangingMeasurementData_t measureC;
 
   //Serial.print("Reading a measurement... ");
   sensorA.rangingTest(&measureA, false); // pass in 'true' to get debug data printout!
   sensorB.rangingTest(&measureB, false); // pass in 'true' to get debug data printout!
+  sensorC.rangingTest(&measureC, false); // pass in 'true' to get debug data printout!
 
   if (measureA.RangeStatus != 4) {  // phase failures have incorrect data
     Serial.print("Distance (mm): [A] "); Serial.println(measureA.RangeMilliMeter);
@@ -81,6 +93,12 @@ void loop() {
     Serial.print("Distance (mm): [B] "); Serial.println(measureB.RangeMilliMeter);
   } else {
     Serial.println(" [B] out of range ");
+  }
+
+  if (measureC.RangeStatus != 4) {  // phase failures have incorrect data
+    Serial.print("Distance (mm): [C] "); Serial.println(measureC.RangeMilliMeter);
+  } else {
+    Serial.println(" [C] out of range ");
   }
 
   delay(100);

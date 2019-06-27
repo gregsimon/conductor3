@@ -24,6 +24,9 @@ const uint8_t addr_sensorA = 0x29;
 const uint8_t addr_sensorB = 0x29;
 const uint8_t addr_sensorC = 0x29;
 
+int last_b = -1; // for detecting vibrato
+uint32_t last_b_time = 0;
+
 
 // Since all rangefinders are on the I2C bus, we need to assign
 // custom addresses to them. we'll do this by disabling them all,
@@ -99,6 +102,7 @@ void loop() {
   // Sensor B (X) 
   // Sensor C (Y) 40 .. 350 --> 0 .. 127
 
+  // DYNAMICS
   // Sensor A (Z) 0 .. 400 --> 127 .. 0
   if (measureA.RangeStatus != 4) {
     int a = range_clamp(0, 500, measureA.RangeMilliMeter);
@@ -107,32 +111,61 @@ void loop() {
     usbMIDI.sendControlChange(1, a, channel);
   }
 
+  // Sensor B (X)
+  // Centered is ~180  Look at ~150 off either side.
+  if (measureB.RangeStatus != 4) {
+    if (-1 == last_b) {
+      last_b = measureB.RangeMilliMeter;
+    } else {
+      int b = measureB.RangeMilliMeter;
+
+      //float value = 100.0 * abs(float(b - last_b) / float(time_stamp - last_b_time));
+      // {
+        //float v = abs(b - last_b) / 2.0;
+      //if (use_serial) Serial.println(b);
+
+      int value = 0;
+      if (b < 120) {
+        // range will be 30 .. 120, map to [127 .. 0]
+        value = range_clamp(30, 120, b) - 30;
+        value = (int)(1.4 * (float)(90.0-value));
+
+        if (use_serial) Serial.println(value);
+      }
+
+      usbMIDI.sendControlChange(21, value, channel);
+
+      last_b = b;
+    }
+  }
+
+  // EXPRESSION
   // Sensor C (Y) 40 .. 350 --> 0 .. 127
   if (measureC.RangeStatus != 4) {
-    int c = range_clamp(40, 350, measureC.RangeMilliMeter);
+    int c = range_clamp(40, 250, measureC.RangeMilliMeter);
     c = c - 40;
-    c = (int)((float)c / (310.0/127.0));
-    usbMIDI.sendControlChange(2, c, channel);
+    c = (int)((float)c / (210.0/127.0));
+    usbMIDI.sendControlChange(11, c, channel);
   }
 
 
   if (use_serial) {
     if (measureA.RangeStatus != 4) {  // phase failures have incorrect data
-      Serial.print("Distance (mm): [A] "); Serial.println(measureA.RangeMilliMeter);
+      //Serial.print("Distance (mm): [A] "); Serial.println(measureA.RangeMilliMeter);
     } else {
-      Serial.println(" [A] out of range ");
+      //Serial.println(" [A] out of range ");
     }
   
     if (measureB.RangeStatus != 4) {  // phase failures have incorrect data
-      Serial.print("Distance (mm): [B] "); Serial.println(measureB.RangeMilliMeter);
+      //Serial.print("Distance (mm): [B] "); Serial.println(measureB.RangeMilliMeter);
     } else {
-      Serial.println(" [B] out of range ");
+      //Serial.println(" [B] out of range ");
     }
   
     if (measureC.RangeStatus != 4) {  // phase failures have incorrect data
-      Serial.print("Distance (mm): [C] "); Serial.println(measureC.RangeMilliMeter);
+      //Serial.print("Distance (mm): [C] "); Serial.println(measureC.RangeMilliMeter);
     } else {
-      Serial.println(" [C] out of range ");
+      //Serial.println(" [C] out of range ");
     }
   }
   
